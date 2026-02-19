@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopKeep — Inventory Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Nunito:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* --- keep your previous CSS, minor tweaks for UX --- */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --paper: #faf6ef; --paper2: #f3ede2; --ink: #2c2416; --ink2: #6b5d4a; --ink3: #a8967e;
+  --rule: #ddd3c0; --green: #3a7d5c; --green-l: #e8f4ed; --red: #c0392b; --red-l: #fdecea;
+  --amber: #c07d1a; --amber-l: #fef3dc; --blue: #2563a8; --blue-l: #e8f0fb; --shadow: rgba(44,36,22,.08);
+}
+body {background: var(--paper2); color: var(--ink); font-family: 'Nunito', sans-serif; font-weight: 400; min-height: 100vh;}
+/* ... rest of your CSS remains the same ... */
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <h1>Shop<span>Keep</span> &mdash; Inventory</h1>
+    <div class="header-actions">
+      <button class="btn btn-amber" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn btn-ghost" style="color:var(--paper);border-color:#4a3d2f" onclick="clearAllData()">🗑 Reset</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <!-- Add Product -->
+      <div>
+        <div class="section-label">Add Product</div>
+        <div class="form-card">
+          <div class="form-row">
+            <input type="text" id="p-name" placeholder="Product name" />
+          </div>
+          <div class="form-row">
+            <select id="p-cat">
+              <option value="Produce">Produce</option>
+              <option value="Dairy">Dairy</option>
+              <option value="Bakery">Bakery</option>
+              <option value="Meat">Meat</option>
+              <option value="Beverages">Beverages</option>
+              <option value="Snacks">Snacks</option>
+              <option value="Frozen">Frozen</option>
+              <option value="Other">Other</option>
+            </select>
+            <input type="number" id="p-qty" placeholder="Qty" min="0" />
+          </div>
+          <div class="form-row">
+            <button class="btn btn-primary" style="width:100%" onclick="addProduct()">＋ Add Product</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product List -->
+      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+          <div class="section-label" style="margin:0">Inventory (<span id="p-count">0</span>)</div>
+          <input type="text" id="search" placeholder="Search…" style="width:130px;padding:.3rem .6rem;font-size:.8rem" oninput="renderProducts()" />
+        </div>
+        <div id="product-list" class="product-list" style="overflow-y:auto;flex:1"></div>
+      </div>
+    </aside>
+
+    <!-- MAIN PANEL -->
+    <main class="panel">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card stat-blue"><div class="stat-val" id="st-products">0</div><div class="stat-lbl">Products</div></div>
+        <div class="stat-card stat-green"><div class="stat-val" id="st-total-qty">0</div><div class="stat-lbl">Total Stock</div></div>
+        <div class="stat-card stat-amber"><div class="stat-val" id="st-sales">0</div><div class="stat-lbl">Total Units Sold</div></div>
+        <div class="stat-card stat-red"><div class="stat-val" id="st-low">0</div><div class="stat-lbl">Low Stock Alerts</div></div>
+      </div>
+
+      <!-- Sales Section -->
+      <div class="sales-section">
+        <div class="sales-header">
+          <div class="section-label" style="margin:0">Record a Sale</div>
+        </div>
+        <div class="sale-form">
+          <select id="s-product"><option value="">Select product…</option></select>
+          <input type="number" id="s-qty" placeholder="Qty" min="1" value="1" />
+          <button class="btn btn-green" id="sale-btn" onclick="recordSale()">✓ Record Sale</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('log',this)">Sales Log</button>
+          <button class="tab-btn" onclick="switchTab('charts',this)">Charts</button>
+        </div>
+
+        <div id="tab-log" class="tab-pane active">
+          <div class="sales-log">
+            <table>
+              <thead><tr><th>Date & Time</th><th>Product</th><th>Category</th><th>Qty Sold</th></tr></thead>
+              <tbody id="sales-tbody"></tbody>
+            </table>
+            <div id="sales-empty" class="empty-state" style="display:none">No sales recorded yet.</div>
+          </div>
+        </div>
+
+        <div id="tab-charts" class="tab-pane">
+          <div class="charts-row">
+            <div class="chart-card">
+              <h3>📈 Most Sold Products</h3>
+              <div class="chart-wrap"><canvas id="chart-top"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h3>📉 Least Sold Products</h3>
+              <div class="chart-wrap"><canvas id="chart-low"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- MODAL & TOASTS remain the same as your version -->
+
+<script>
+// =========================================================
+//  STATE & STORAGE
+// =========================================================
+const LOW_DEFAULT = 5;
+let products = load('sk_products', []);
+let sales    = load('sk_sales', []);
+
+function load(key, def){ try{ const v=localStorage.getItem(key); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
+function save(){ localStorage.setItem('sk_products', JSON.stringify(products)); localStorage.setItem('sk_sales', JSON.stringify(sales)); }
+
+// =========================================================
+//  PRODUCTS
+// =========================================================
+function addProduct(){
+  const name = document.getElementById('p-name').value.trim();
+  const qty  = parseInt(document.getElementById('p-qty').value) || 0;
+  const cat  = document.getElementById('p-cat').value;
+  if(!name){ toast('Enter a product name','error'); return; }
+  if(qty<0){ toast('Quantity cannot be negative','error'); return; }
+  if(products.find(p=>p.name.toLowerCase()===name.toLowerCase())){ toast('Product already exists','warning'); return; }
+  products.push({ id: Date.now().toString(), name, cat, qty, threshold: LOW_DEFAULT });
+  save(); render();
+  document.getElementById('p-name').value='';
+  document.getElementById('p-qty').value='';
+  toast(`"${name}" added to inventory`,'success');
+}
+
+// =========================================================
+//  SALES
+// =========================================================
+function recordSale(){
+  const id  = document.getElementById('s-product').value;
+  const qty = parseInt(document.getElementById('s-qty').value) || 0;
+  if(!id){ toast('Select a product','error'); return; }
+  if(qty < 1){ toast('Qty must be at least 1','error'); return; }
+  const p = products.find(p=>p.id===id);
+  if(!p){ toast('Product not found','error'); return; }
+  if(p.qty < qty){ toast(`Only ${p.qty} units in stock`,'warning'); return; }
+  p.qty -= qty;
+  sales.push({ date: new Date().toISOString(), productId: id, productName: p.name, cat: p.cat, qty });
+  save(); render();
+  document.getElementById('s-qty').value = 1;
+  toast(`Sold ${qty}× ${p.name}`,'success');
+  if(p.qty <= (p.threshold ?? LOW_DEFAULT)) toast(`⚠ Low stock: ${p.name} (${p.qty} left)`,'warning');
+}
+
+// =========================================================
+//  RENDER & CHARTS
+// =========================================================
+function render(){ renderProducts(); renderSalesLog(); renderStats(); renderSaleSelect(); renderCharts(); }
+
+function renderSaleSelect(){
+  const sel = document.getElementById('s-product');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select product…</option>' +
+    products.map(p=>`<option value="${p.id}"${p.id===cur?' selected':''}>${esc(p.name)} (${p.qty} in stock)</option>`).join('');
+  document.getElementById('sale-btn').disabled = products.length===0;
+}
+
+// =========================================================
+//  INITIAL DEMO DATA (client-ready)
+// =========================================================
+if(!products.length){
+  products = [
+    {id:'1',name:'Whole Milk',cat:'Dairy',qty:24,threshold:5},
+    {id:'2',name:'Sourdough Bread',cat:'Bakery',qty:8,threshold:5},
+    {id:'3',name:'Roma Tomatoes',cat:'Produce',qty:4,threshold:5},
+  ];
+  sales = [];
+  save();
+}
+
+render();
+</script>
+</body>
+</html>
