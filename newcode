@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopKeep — Inventory Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f11;
+    --surface: #1a1a1f;
+    --surface2: #242429;
+    --border: #2e2e36;
+    --accent: #f0c040;
+    --accent2: #e05a5a;
+    --green: #4ecb71;
+    --text: #f0eff5;
+    --muted: #7c7c8f;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 28px 16px;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+    padding: 0 10px 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .logo span { color: var(--text); }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14.5px;
+    font-weight: 500;
+    transition: all .18s;
+    margin-bottom: 4px;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(240,192,64,.13); color: var(--accent); }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    padding-left: 12px;
+    line-height: 1.6;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: 240px;
+    flex: 1;
+    padding: 36px 40px;
+    min-height: 100vh;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── HEADER ── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  /* ── STATS CARDS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 18px;
+    margin-bottom: 36px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .2s;
+  }
+  .stat-card:hover { transform: translateY(-3px); }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .stat-card.yellow::before { background: var(--accent); }
+  .stat-card.red::before    { background: var(--accent2); }
+  .stat-card.green::before  { background: var(--green); }
+  .stat-card.blue::before   { background: #5b9cf6; }
+
+  .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 700; }
+  .stat-sub   { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 18px;
+    border-radius: 9px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+    border: none;
+    outline: none;
+  }
+  .btn-primary { background: var(--accent); color: #111; }
+  .btn-primary:hover { background: #ffd060; transform: translateY(-1px); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--border); }
+  .btn-danger { background: rgba(224,90,90,.15); color: var(--accent2); border: 1px solid rgba(224,90,90,.25); }
+  .btn-danger:hover { background: rgba(224,90,90,.25); }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  /* ── SEARCH & FILTERS ── */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+  }
+  .search-wrap svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    width: 16px; height: 16px;
+  }
+  .search-input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
+
+  select.filter-select {
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    min-width: 140px;
+  }
+  select.filter-select:focus { border-color: var(--accent); }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 1px solid var(--border); background: var(--surface2); }
+  thead th {
+    text-align: left;
+    padding: 13px 18px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--muted);
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--text); }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .12s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 13px 18px; font-size: 14px; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .badge-green  { background: rgba(78,203,113,.15); color: var(--green); }
+  .badge-red    { background: rgba(224,90,90,.15);  color: var(--accent2); }
+  .badge-yellow { background: rgba(240,192,64,.15); color: var(--accent); }
+  .badge-gray   { background: var(--surface2); color: var(--muted); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    width: 100%;
+    max-width: 500px;
+    padding: 32px;
+    animation: modalIn .2s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(.95) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 24px;
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 7px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .form-input {
+    padding: 10px 13px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: .4; }
+  .empty h3 { font-size: 16px; color: var(--text); margin-bottom: 8px; }
+  .empty p  { font-size: 14px; }
+
+  /* ── LOW STOCK PAGE ── */
+  .alert-banner {
+    background: rgba(224,90,90,.1);
+    border: 1px solid rgba(224,90,90,.25);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--accent2);
+  }
+
+  /* ── REPORTS PAGE ── */
+  .report-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .report-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .report-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    margin-bottom: 18px;
+    color: var(--text);
+  }
+  .report-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .report-row:last-child { border-bottom: none; }
+  .report-row .name { color: var(--muted); }
+  .report-row .val  { font-weight: 600; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all .3s cubic-bezier(.34,1.56,.64,1);
+    max-width: 320px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--green); }
+  .toast.error   { border-color: var(--accent2); }
+
+  /* ── QUANTITY CONTROL ── */
+  .qty-ctrl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .qty-btn {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .12s;
+    line-height: 1;
+  }
+  .qty-btn:hover { background: var(--accent); color: #111; border-color: var(--accent); }
+
+  /* ── CATEGORY CHIP ── */
+  .cat-chip {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 50px;
+    font-size: 12px;
+    background: var(--surface2);
+    color: var(--muted);
+  }
+
+  /* responsive */
+  @media(max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main { margin-left: 0; padding: 20px 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">Shop<span>Keep</span></div>
+  <nav>
+    <div class="nav-item active" onclick="navigate('dashboard')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="navigate('inventory')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+      Inventory
+    </div>
+    <div class="nav-item" onclick="navigate('lowstock')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+      Low Stock
+    </div>
+    <div class="nav-item" onclick="navigate('reports')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6"  y1="20" x2="6"  y2="14"/></svg>
+      Reports
+    </div>
+    <div class="nav-item" onclick="navigate('backup')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Backup & Restore
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    Data stored locally<br>in your browser.<br>No server needed.
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <h1 class="page-title">Dashboard</h1>
+      <button class="btn btn-primary" onclick="openAddModal()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Product
+      </button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card yellow">
+        <div class="stat-label">Total Products</div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-sub">across all categories</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Total Stock Value</div>
+        <div class="stat-value" id="stat-value">₹0</div>
+        <div class="stat-sub">cost price × quantity</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Low Stock Items</div>
+        <div class="stat-value" id="stat-low">0</div>
+        <div class="stat-sub">below threshold</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Categories</div>
+        <div class="stat-value" id="stat-cats">0</div>
+        <div class="stat-sub">unique categories</div>
+      </div>
+    </div>
+
+    <!-- Recent inventory -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="dashboard-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- INVENTORY -->
+  <div class="page" id="page-inventory">
+    <div class="page-header">
+      <h1 class="page-title">Inventory</h1>
+      <button class="btn btn-primary" onclick="openAddModal()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Product
+      </button>
+    </div>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" class="search-input" id="inv-search" placeholder="Search products…" oninput="renderInventory()">
+      </div>
+      <select class="filter-select" id="inv-cat-filter" onchange="renderInventory()">
+        <option value="">All Categories</option>
+      </select>
+      <select class="filter-select" id="inv-sort" onchange="renderInventory()">
+        <option value="name">Name A–Z</option>
+        <option value="qty-asc">Qty Low–High</option>
+        <option value="qty-desc">Qty High–Low</option>
+        <option value="price-desc">Price High–Low</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Category</th>
+            <th>Quantity</th>
+            <th>Buy Price</th>
+            <th>Sell Price</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inv-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOW STOCK -->
+  <div class="page" id="page-lowstock">
+    <div class="page-header">
+      <h1 class="page-title">Low Stock Alerts</h1>
+    </div>
+    <div class="alert-banner" id="low-stock-banner">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span id="low-stock-msg">Loading…</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Product</th><th>Category</th><th>Current Qty</th><th>Threshold</th><th>Quick Restock</th></tr>
+        </thead>
+        <tbody id="low-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="page" id="page-reports">
+    <div class="page-header">
+      <h1 class="page-title">Reports</h1>
+    </div>
+    <div class="report-cards" id="report-cards"></div>
+  </div>
+
+  <!-- BACKUP & RESTORE -->
+  <div class="page" id="page-backup">
+    <div class="page-header">
+      <h1 class="page-title">Backup & Restore</h1>
+    </div>
+
+    <!-- Warning banner -->
+    <div style="background:rgba(91,156,246,.08);border:1px solid rgba(91,156,246,.25);border-radius:var(--radius);padding:16px 20px;margin-bottom:28px;font-size:14px;color:#5b9cf6;display:flex;gap:12px;align-items:flex-start;">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span><strong>Tip:</strong> Export a backup regularly and store it in Google Drive or a USB drive. This protects your data if your browser cache is cleared.</span>
+    </div>
+
+    <div class="report-cards" style="grid-template-columns: repeat(auto-fit, minmax(300px,1fr))">
+
+      <!-- Export CSV -->
+      <div class="report-card" style="display:flex;flex-direction:column;gap:14px;">
+        <h3>📥 Export to CSV</h3>
+        <p style="font-size:14px;color:var(--muted);line-height:1.6;">Save all your products as a <strong style="color:var(--text)">.csv</strong> file — opens in Excel, Google Sheets, or any spreadsheet app. Perfect for printing or sharing.</p>
+        <button class="btn btn-primary" style="align-self:flex-start" onclick="exportCSV()">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download CSV
+        </button>
+      </div>
+
+      <!-- Import CSV -->
+      <div class="report-card" style="display:flex;flex-direction:column;gap:14px;">
+        <h3>📤 Import from CSV</h3>
+        <p style="font-size:14px;color:var(--muted);line-height:1.6;">Upload a CSV file to add products in bulk. The file must have columns: <strong style="color:var(--text)">name, category, quantity, buy_price, sell_price, sku, threshold, notes</strong>.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label class="btn btn-ghost" style="cursor:pointer">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Choose CSV File
+            <input type="file" accept=".csv" id="csv-import-input" style="display:none" onchange="importCSV(this)">
+          </label>
+          <button class="btn btn-ghost" onclick="downloadSampleCSV()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Sample File
+          </button>
+        </div>
+        <div id="import-status" style="font-size:13px;color:var(--muted)"></div>
+      </div>
+
+      <!-- JSON Backup -->
+      <div class="report-card" style="display:flex;flex-direction:column;gap:14px;">
+        <h3>💾 Full JSON Backup</h3>
+        <p style="font-size:14px;color:var(--muted);line-height:1.6;">Download a complete backup of all data as a <strong style="color:var(--text)">.json</strong> file. Use this to fully restore your inventory on any device or browser.</p>
+        <button class="btn btn-ghost" style="align-self:flex-start" onclick="exportJSON()">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download JSON Backup
+        </button>
+      </div>
+
+      <!-- JSON Restore -->
+      <div class="report-card" style="display:flex;flex-direction:column;gap:14px;">
+        <h3>🔁 Restore from JSON</h3>
+        <p style="font-size:14px;color:var(--muted);line-height:1.6;">Restore a previously saved JSON backup. <strong style="color:var(--accent2)">Warning:</strong> This will replace all current data.</p>
+        <label class="btn btn-danger" style="cursor:pointer;align-self:flex-start">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Restore JSON Backup
+          <input type="file" accept=".json" id="json-restore-input" style="display:none" onchange="restoreJSON(this)">
+        </label>
+        <div id="restore-status" style="font-size:13px;color:var(--muted)"></div>
+      </div>
+
+      <!-- Clear data -->
+      <div class="report-card" style="display:flex;flex-direction:column;gap:14px;">
+        <h3>🗑️ Clear All Data</h3>
+        <p style="font-size:14px;color:var(--muted);line-height:1.6;">Permanently delete all products from this device. <strong style="color:var(--accent2)">This cannot be undone.</strong> Export a backup first!</p>
+        <button class="btn btn-danger" style="align-self:flex-start" onclick="clearAllData()">
+          Delete Everything
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Add New Product</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Product Name *</label>
+        <input type="text" class="form-input" id="f-name" placeholder="e.g. Basmati Rice 5kg">
+      </div>
+      <div class="form-group">
+        <label class="form-label">SKU / Code</label>
+        <input type="text" class="form-input" id="f-sku" placeholder="e.g. RICE-001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category *</label>
+        <input type="text" class="form-input" id="f-cat" placeholder="e.g. Groceries" list="cat-suggestions">
+        <datalist id="cat-suggestions"></datalist>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quantity *</label>
+        <input type="number" class="form-input" id="f-qty" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Low Stock Threshold</label>
+        <input type="number" class="form-input" id="f-threshold" placeholder="5" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Buy Price (₹)</label>
+        <input type="number" class="form-input" id="f-buy" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sell Price (₹)</label>
+        <input type="number" class="form-input" id="f-sell" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Notes</label>
+        <input type="text" class="form-input" id="f-notes" placeholder="Optional notes…">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+
+let products = JSON.parse(localStorage.getItem('shopkeep_products') || '[]');
+let editId = null;
+
+function save() {
+  localStorage.setItem('shopkeep_products', JSON.stringify(products));
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
+function genSku(name) {
+  return name.slice(0,3).toUpperCase() + '-' + Math.floor(100+Math.random()*900);
+}
+
+// ─── NAVIGATION ────────────────────────────────────────────────────────────
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick').includes(page)) n.classList.add('active');
+  });
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'inventory') renderInventory();
+  if (page === 'lowstock')  renderLowStock();
+  if (page === 'reports')   renderReports();
+  if (page === 'backup')    {} // static page
+}
+
+// ─── STATUS ─────────────────────────────────────────────────────────────────
+
+function getStatus(p) {
+  if (p.qty === 0) return {label:'Out of Stock', cls:'badge-red'};
+  if (p.qty <= (p.threshold||5)) return {label:'Low Stock', cls:'badge-yellow'};
+  return {label:'In Stock', cls:'badge-green'};
+}
+
+function fmt(n) { return '₹' + parseFloat(n||0).toFixed(2); }
+
+// ─── DASHBOARD ──────────────────────────────────────────────────────────────
+
+function renderDashboard() {
+  document.getElementById('stat-total').textContent = products.length;
+  const val = products.reduce((s,p) => s + (p.buy||0) * p.qty, 0);
+  document.getElementById('stat-value').textContent = '₹'+val.toFixed(0);
+  const low = products.filter(p => p.qty <= (p.threshold||5) && p.qty > 0);
+  document.getElementById('stat-low').textContent = low.length;
+  const cats = new Set(products.map(p=>p.cat)).size;
+  document.getElementById('stat-cats').textContent = cats;
+
+  const tb = document.getElementById('dashboard-table-body');
+  if (!products.length) {
+    tb.innerHTML = `<tr><td colspan="5"><div class="empty">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+      <h3>No products yet</h3><p>Click "Add Product" to get started.</p></div></td></tr>`;
+    return;
+  }
+  const recent = [...products].reverse().slice(0,10);
+  tb.innerHTML = recent.map(p => {
+    const s = getStatus(p);
+    return `<tr>
+      <td><strong>${esc(p.name)}</strong>${p.notes?`<div style="font-size:12px;color:var(--muted)">${esc(p.notes)}</div>`:''}</td>
+      <td><span class="cat-chip">${esc(p.cat)}</span></td>
+      <td>${p.qty}</td>
+      <td>${fmt(p.sell)}</td>
+      <td><span class="badge ${s.cls}">${s.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── INVENTORY ──────────────────────────────────────────────────────────────
+
+function renderInventory() {
+  const q = document.getElementById('inv-search').value.toLowerCase();
+  const cat = document.getElementById('inv-cat-filter').value;
+  const sort = document.getElementById('inv-sort').value;
+
+  // update category filter options
+  const allCats = [...new Set(products.map(p=>p.cat))].sort();
+  const cf = document.getElementById('inv-cat-filter');
+  const curVal = cf.value;
+  cf.innerHTML = '<option value="">All Categories</option>' +
+    allCats.map(c=>`<option value="${esc(c)}" ${c===curVal?'selected':''}>${esc(c)}</option>`).join('');
+
+  // update datalist
+  document.getElementById('cat-suggestions').innerHTML =
+    allCats.map(c=>`<option value="${esc(c)}">`).join('');
+
+  let list = products.filter(p => {
+    const matchQ = !q || p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q) || p.cat.toLowerCase().includes(q);
+    const matchC = !cat || p.cat === cat;
+    return matchQ && matchC;
+  });
+
+  if (sort === 'name')       list.sort((a,b)=>a.name.localeCompare(b.name));
+  if (sort === 'qty-asc')    list.sort((a,b)=>a.qty-b.qty);
+  if (sort === 'qty-desc')   list.sort((a,b)=>b.qty-a.qty);
+  if (sort === 'price-desc') list.sort((a,b)=>(b.sell||0)-(a.sell||0));
+
+  const tb = document.getElementById('inv-table-body');
+  if (!list.length) {
+    tb.innerHTML = `<tr><td colspan="8"><div class="empty">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <h3>No results</h3><p>Try a different search or category.</p></div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = list.map(p => {
+    const s = getStatus(p);
+    return `<tr>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td style="color:var(--muted);font-size:13px">${esc(p.sku||'—')}</td>
+      <td><span class="cat-chip">${esc(p.cat)}</span></td>
+      <td>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeQty('${p.id}',-1)">−</button>
+          <span style="min-width:30px;text-align:center">${p.qty}</span>
+          <button class="qty-btn" onclick="changeQty('${p.id}',1)">+</button>
+        </div>
+      </td>
+      <td>${fmt(p.buy)}</td>
+      <td>${fmt(p.sell)}</td>
+      <td><span class="badge ${s.cls}">${s.label}</span></td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="openEditModal('${p.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">Del</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function changeQty(id, delta) {
+  const p = products.find(x=>x.id===id);
+  if (!p) return;
+  p.qty = Math.max(0, p.qty + delta);
+  save();
+  renderInventory();
+  renderDashboard();
+}
+
+// ─── LOW STOCK ──────────────────────────────────────────────────────────────
+
+function renderLowStock() {
+  const low = products.filter(p => p.qty <= (p.threshold||5));
+  document.getElementById('low-stock-msg').textContent =
+    low.length ? `${low.length} item(s) need restocking soon.` : 'All items are well stocked! 🎉';
+  if (!low.length) {
+    document.getElementById('low-table-body').innerHTML =
+      `<tr><td colspan="5"><div class="empty">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <h3>All Good!</h3><p>No items are below their threshold.</p></div></td></tr>`;
+    return;
+  }
+  document.getElementById('low-table-body').innerHTML = low.map(p => {
+    const s = getStatus(p);
+    return `<tr>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td><span class="cat-chip">${esc(p.cat)}</span></td>
+      <td><span class="badge ${s.cls}">${p.qty}</span></td>
+      <td style="color:var(--muted)">${p.threshold||5}</td>
+      <td>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="restock('${p.id}',10)" title="Add 10">+10</button>
+          <button class="qty-btn" onclick="restock('${p.id}',25)" title="Add 25">+25</button>
+          <button class="qty-btn" onclick="restock('${p.id}',50)" title="Add 50">+50</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function restock(id, amount) {
+  const p = products.find(x=>x.id===id);
+  if (!p) return;
+  p.qty += amount;
+  save();
+  renderLowStock();
+  toast(`Restocked ${p.name} by ${amount} units.`, 'success');
+}
+
+// ─── REPORTS ────────────────────────────────────────────────────────────────
+
+function renderReports() {
+  if (!products.length) {
+    document.getElementById('report-cards').innerHTML =
+      `<div class="report-card"><p style="color:var(--muted)">Add products to see reports.</p></div>`;
+    return;
+  }
+
+  // Top by value
+  const byValue = [...products].sort((a,b) => ((b.sell||0)*b.qty) - ((a.sell||0)*a.qty)).slice(0,5);
+  // By category
+  const catMap = {};
+  products.forEach(p => {
+    catMap[p.cat] = (catMap[p.cat]||0) + p.qty;
+  });
+  const catRows = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+
+  // totals
+  const totalCost   = products.reduce((s,p)=>(s+(p.buy||0)*p.qty),0);
+  const totalRevenue = products.reduce((s,p)=>(s+(p.sell||0)*p.qty),0);
+
+  document.getElementById('report-cards').innerHTML = `
+    <div class="report-card">
+      <h3>📦 Top Products by Value</h3>
+      ${byValue.map(p=>`<div class="report-row">
+        <span class="name">${esc(p.name)}</span>
+        <span class="val">${fmt((p.sell||0)*p.qty)}</span>
+      </div>`).join('')}
+    </div>
+    <div class="report-card">
+      <h3>🗂️ Stock by Category</h3>
+      ${catRows.map(([c,q])=>`<div class="report-row">
+        <span class="name">${esc(c)}</span>
+        <span class="val">${q} units</span>
+      </div>`).join('')}
+    </div>
+    <div class="report-card">
+      <h3>💰 Financial Summary</h3>
+      <div class="report-row"><span class="name">Total Products</span><span class="val">${products.length}</span></div>
+      <div class="report-row"><span class="name">Total Units</span><span class="val">${products.reduce((s,p)=>s+p.qty,0)}</span></div>
+      <div class="report-row"><span class="name">Inventory Cost</span><span class="val">${fmt(totalCost)}</span></div>
+      <div class="report-row"><span class="name">Revenue Potential</span><span class="val">${fmt(totalRevenue)}</span></div>
+      <div class="report-row"><span class="name">Gross Margin</span><span class="val" style="color:var(--green)">${fmt(totalRevenue-totalCost)}</span></div>
+    </div>
+  `;
+}
+
+// ─── MODAL ──────────────────────────────────────────────────────────────────
+
+function openAddModal() {
+  editId = null;
+  document.getElementById('modal-title').textContent = 'Add New Product';
+  ['name','sku','cat','qty','threshold','buy','sell','notes'].forEach(f => {
+    document.getElementById('f-'+f).value = '';
+  });
+  document.getElementById('f-threshold').value = 5;
+  document.getElementById('product-modal').classList.add('open');
+  document.getElementById('f-name').focus();
+}
+
+function openEditModal(id) {
+  const p = products.find(x=>x.id===id);
+  if (!p) return;
+  editId = id;
+  document.getElementById('modal-title').textContent = 'Edit Product';
+  document.getElementById('f-name').value  = p.name;
+  document.getElementById('f-sku').value   = p.sku||'';
+  document.getElementById('f-cat').value   = p.cat;
+  document.getElementById('f-qty').value   = p.qty;
+  document.getElementById('f-threshold').value = p.threshold||5;
+  document.getElementById('f-buy').value   = p.buy||'';
+  document.getElementById('f-sell').value  = p.sell||'';
+  document.getElementById('f-notes').value = p.notes||'';
+  document.getElementById('product-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('product-modal').classList.remove('open');
+}
+
+function saveProduct() {
+  const name = document.getElementById('f-name').value.trim();
+  const cat  = document.getElementById('f-cat').value.trim();
+  const qty  = parseInt(document.getElementById('f-qty').value)||0;
+  if (!name || !cat) { toast('Name and Category are required.', 'error'); return; }
+
+  if (editId) {
+    const p = products.find(x=>x.id===editId);
+    Object.assign(p, {
+      name, cat, qty,
+      sku:       document.getElementById('f-sku').value.trim() || p.sku,
+      threshold: parseInt(document.getElementById('f-threshold').value)||5,
+      buy:       parseFloat(document.getElementById('f-buy').value)||0,
+      sell:      parseFloat(document.getElementById('f-sell').value)||0,
+      notes:     document.getElementById('f-notes').value.trim(),
+    });
+    toast('Product updated!', 'success');
+  } else {
+    products.push({
+      id: genId(),
+      name, cat, qty,
+      sku:       document.getElementById('f-sku').value.trim() || genSku(name),
+      threshold: parseInt(document.getElementById('f-threshold').value)||5,
+      buy:       parseFloat(document.getElementById('f-buy').value)||0,
+      sell:      parseFloat(document.getElementById('f-sell').value)||0,
+      notes:     document.getElementById('f-notes').value.trim(),
+    });
+    toast('Product added!', 'success');
+  }
+
+  save();
+  closeModal();
+  renderDashboard();
+  renderInventory();
+}
+
+function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  products = products.filter(x=>x.id!==id);
+  save();
+  renderInventory();
+  renderDashboard();
+  toast('Product deleted.', 'error');
+}
+
+// ─── TOAST ──────────────────────────────────────────────────────────────────
+
+let toastTimer;
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  const icon = type==='success' ? '✓' : '✕';
+  el.innerHTML = `<span style="color:${type==='success'?'var(--green)':'var(--accent2)'};font-weight:700">${icon}</span> ${msg}`;
+  el.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ─── UTILS ──────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// close modal on overlay click
+document.getElementById('product-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// keyboard shortcut
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ─── SEED DATA (first run) ───────────────────────────────────────────────────
+
+if (!products.length) {
+  const seed = [
+    {name:'Basmati Rice 5kg',    cat:'Groceries',   qty:48, sku:'RICE-001', buy:320, sell:420, threshold:10, notes:'Premium grade'},
+    {name:'Toor Dal 1kg',        cat:'Groceries',   qty:3,  sku:'DAL-002',  buy:90,  sell:130, threshold:8,  notes:''},
+    {name:'Sunflower Oil 1L',    cat:'Groceries',   qty:20, sku:'OIL-003',  buy:110, sell:150, threshold:5,  notes:''},
+    {name:'Amul Butter 500g',    cat:'Dairy',       qty:15, sku:'BUT-004',  buy:230, sell:270, threshold:6,  notes:'Keep refrigerated'},
+    {name:'Surf Excel 1kg',      cat:'Household',   qty:2,  sku:'SRF-005',  buy:170, sell:220, threshold:5,  notes:''},
+    {name:'Colgate 200g',        cat:'Personal Care',qty:12,sku:'CLG-006',  buy:65,  sell:90,  threshold:5,  notes:''},
+    {name:'Notebook A4 100pg',   cat:'Stationery',  qty:0,  sku:'NTB-007',  buy:30,  sell:55,  threshold:10, notes:''},
+    {name:'Pen Blue Pack (10)',   cat:'Stationery',  qty:8,  sku:'PEN-008',  buy:40,  sell:65,  threshold:5,  notes:'Ballpoint'},
+  ];
+  seed.forEach(s => products.push({id:genId(), ...s}));
+  save();
+}
+
+// ─── EXPORT / IMPORT / BACKUP ────────────────────────────────────────────────
+
+function exportCSV() {
+  if (!products.length) { toast('No products to export.', 'error'); return; }
+  const headers = ['name','sku','category','quantity','buy_price','sell_price','threshold','notes'];
+  const rows = products.map(p => [
+    csvCell(p.name), csvCell(p.sku||''), csvCell(p.cat),
+    p.qty, p.buy||0, p.sell||0, p.threshold||5, csvCell(p.notes||'')
+  ]);
+  const csv = [headers.join(','), ...rows.map(r=>r.join(','))].join('\n');
+  download('shopkeep_inventory_' + dateStr() + '.csv', csv, 'text/csv');
+  toast('CSV exported successfully!', 'success');
+}
+
+function downloadSampleCSV() {
+  const sample = `name,sku,category,quantity,buy_price,sell_price,threshold,notes
+Basmati Rice 5kg,RICE-001,Groceries,50,320,420,10,Premium grade
+Toor Dal 1kg,DAL-002,Groceries,20,90,130,8,
+Colgate 200g,CLG-001,Personal Care,30,65,90,5,`;
+  download('shopkeep_sample.csv', sample, 'text/csv');
+  toast('Sample CSV downloaded!', 'success');
+}
+
+function importCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const lines = e.target.result.split('\n').map(l=>l.trim()).filter(Boolean);
+      if (lines.length < 2) throw new Error('File is empty or has no data rows.');
+      const headers = lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+      const nameIdx  = headers.indexOf('name');
+      const catIdx   = headers.indexOf('category');
+      const qtyIdx   = headers.indexOf('quantity');
+      const buyIdx   = headers.indexOf('buy_price');
+      const sellIdx  = headers.indexOf('sell_price');
+      const skuIdx   = headers.indexOf('sku');
+      const thrIdx   = headers.indexOf('threshold');
+      const notesIdx = headers.indexOf('notes');
+      if (nameIdx === -1 || catIdx === -1) throw new Error('CSV must have "name" and "category" columns.');
+
+      let added = 0, skipped = 0;
+      lines.slice(1).forEach(line => {
+        const cols = parseCSVLine(line);
+        const name = cols[nameIdx]?.trim();
+        const cat  = cols[catIdx]?.trim();
+        if (!name || !cat) { skipped++; return; }
+        products.push({
+          id: genId(),
+          name, cat,
+          sku:       skuIdx>=0 ? (cols[skuIdx]?.trim()||genSku(name)) : genSku(name),
+          qty:       qtyIdx>=0  ? (parseInt(cols[qtyIdx])||0)   : 0,
+          buy:       buyIdx>=0  ? (parseFloat(cols[buyIdx])||0)  : 0,
+          sell:      sellIdx>=0 ? (parseFloat(cols[sellIdx])||0) : 0,
+          threshold: thrIdx>=0  ? (parseInt(cols[thrIdx])||5)    : 5,
+          notes:     notesIdx>=0 ? (cols[notesIdx]?.trim()||'') : '',
+        });
+        added++;
+      });
+      save();
+      renderDashboard();
+      renderInventory();
+      document.getElementById('import-status').innerHTML =
+        `<span style="color:var(--green)">✓ Imported ${added} product(s)${skipped?`, skipped ${skipped} invalid row(s)`:''}</span>`;
+      toast(`Imported ${added} products!`, 'success');
+    } catch(err) {
+      document.getElementById('import-status').innerHTML =
+        `<span style="color:var(--accent2)">✕ Error: ${err.message}</span>`;
+      toast('Import failed: ' + err.message, 'error');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i=0; i<line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+function exportJSON() {
+  if (!products.length) { toast('No products to backup.', 'error'); return; }
+  const backup = { version: 1, date: new Date().toISOString(), products };
+  download('shopkeep_backup_' + dateStr() + '.json', JSON.stringify(backup, null, 2), 'application/json');
+  toast('JSON backup downloaded!', 'success');
+}
+
+function restoreJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!confirm(`⚠️ This will REPLACE all current data (${products.length} products) with the backup. Are you sure?`)) {
+    input.value = ''; return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      const arr = Array.isArray(data) ? data : (data.products || null);
+      if (!arr || !Array.isArray(arr)) throw new Error('Invalid backup file format.');
+      products = arr.map(p => ({
+        id: p.id || genId(),
+        name: p.name || 'Unnamed',
+        cat: p.cat || p.category || 'Uncategorised',
+        sku: p.sku || genSku(p.name||'X'),
+        qty: parseInt(p.qty)||0,
+        buy: parseFloat(p.buy)||0,
+        sell: parseFloat(p.sell)||0,
+        threshold: parseInt(p.threshold)||5,
+        notes: p.notes||'',
+      }));
+      save();
+      renderDashboard();
+      renderInventory();
+      document.getElementById('restore-status').innerHTML =
+        `<span style="color:var(--green)">✓ Restored ${products.length} products successfully.</span>`;
+      toast(`Restored ${products.length} products!`, 'success');
+    } catch(err) {
+      document.getElementById('restore-status').innerHTML =
+        `<span style="color:var(--accent2)">✕ Error: ${err.message}</span>`;
+      toast('Restore failed: ' + err.message, 'error');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  if (!confirm(`⚠️ Delete ALL ${products.length} products permanently? Export a backup first!`)) return;
+  if (!confirm('Are you absolutely sure? This CANNOT be undone.')) return;
+  products = [];
+  save();
+  renderDashboard();
+  renderInventory();
+  toast('All data cleared.', 'error');
+}
+
+function csvCell(v) {
+  const s = String(v||'');
+  return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+}
+
+function download(filename, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type}));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function dateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+renderDashboard();
+</script>
+</body>
+</html>
